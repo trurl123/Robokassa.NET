@@ -1,7 +1,7 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
     <PropertyGroup>
-        <TargetFramework>netcoreapp3.1</TargetFramework>
+        <TargetFramework>net6.0</TargetFramework>
         <Title>Robokassa payment</Title>
         <Authors>oldhowl</Authors>
         <Description>Robokassa payment implementation (with Robocheki)</Description>
