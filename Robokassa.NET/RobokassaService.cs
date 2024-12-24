@@ -20,31 +20,30 @@ namespace Robokassa.NET
         }
 
 
-        public PaymentUrl GenerateAuthLink(
-            decimal totalAmount,
-            int invoiceId,
-            RobokassaReceiptRequest receipt,
-            CustomShpParameters customShpParameters)
+        public PaymentUrl GenerateAuthLink(RobokassaInvoiceRequest request)
         {
-            var receiptEncodedJson = receipt?.ToString();
+            var receiptEncodedJson = request.Receipt?.ToString();
 
-            var customFieldsLine = customShpParameters?.ToString();
+            var customFieldsLine = request.ShpParameters?.ToString();
 
-            var amountStr = totalAmount.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture);
+            var amountStr = request.TotalAmount.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture);
             
-            var invoiceIdStr = invoiceId.ToString();
+            var invoiceIdStr = request.InvoiceId.ToString();
 
             var signatureValue =
                 Md5HashService
                     .GenerateMd5Hash(
-                        PrepareMd5SumString(amountStr, invoiceIdStr, receiptEncodedJson, customFieldsLine));
+                        PrepareMd5SumString(amountStr, invoiceIdStr, request.IpAddress, receiptEncodedJson, customFieldsLine));
 
-            return new PaymentUrl(BuildPaymentLink(invoiceIdStr, amountStr, signatureValue, receiptEncodedJson,
-                customShpParameters));
+            return new PaymentUrl(BuildPaymentLink(invoiceIdStr, amountStr, signatureValue, receiptEncodedJson, request));
         }
 
-        private string BuildPaymentLink(string invoiceId, string amount, string signature, string receiptEncodedJson,
-            CustomShpParameters customShpParameters)
+        private string BuildPaymentLink(
+            string invoiceId,
+            string amount,
+            string signature,
+            string receiptEncodedJson,
+            RobokassaInvoiceRequest request)
         {
             const string host = "https://auth.robokassa.ru/Merchant/Index.aspx?";
 
@@ -60,19 +59,31 @@ namespace Robokassa.NET
             if (!string.IsNullOrEmpty(receiptEncodedJson))
                 parameters.Add("Receipt=" + HttpUtility.UrlEncode(receiptEncodedJson));
 
-            customShpParameters?
+            request.ShpParameters?
                 .GetParameters?
                 .ForEach(parameter =>
                     parameters.Add($"{parameter.Key}={HttpUtility.UrlEncode(HttpUtility.UrlEncode(parameter.Value))}"));
 
             parameters.Add("SignatureValue=" + signature);
-            parameters.Add("Culture=ru");
+            if (!string.IsNullOrEmpty(request.Culture))
+                parameters.Add("Culture=" + HttpUtility.UrlEncode(request.Culture));
+            if (!string.IsNullOrEmpty(request.Email))
+                parameters.Add("Email=" + HttpUtility.UrlEncode(request.Email));
+            if (!string.IsNullOrEmpty(request.IpAddress))
+                parameters.Add("UserIp=" + HttpUtility.UrlEncode(request.IpAddress));
+            if (!string.IsNullOrEmpty(request.Description))
+                parameters.Add("Description=" + HttpUtility.UrlEncode(request.Description));
+            parameters.Add("Encoding=utf-8");
 
             var url = host + string.Join("&", parameters);
             return url;
         }
 
-        private string PrepareMd5SumString(string amount, string invoiceId, string receiptEncodedJson,
+        private string PrepareMd5SumString(
+            string amount,
+            string invoiceId,
+            string ipAddress,
+            string receiptEncodedJson,
             string customParameters)
         {
             var str = string.Join(":", new List<string>
@@ -80,10 +91,11 @@ namespace Robokassa.NET
                 _options.ShopName,
                 amount,
                 invoiceId,
+                ipAddress,
                 receiptEncodedJson,
                 _options.Password1,
-                customParameters
-            }.Where(x => x != null));
+                customParameters,
+            }.Where(x => !string.IsNullOrEmpty(x)));
 
             return str;
         }
