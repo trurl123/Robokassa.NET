@@ -12,37 +12,41 @@ namespace Robokassa.NET
         private readonly RobokassaOptions _options;
         private readonly bool _isTestEnv;
 
-
         public RobokassaService(RobokassaOptions options, bool isTestEnv)
         {
             _isTestEnv = isTestEnv;
             _options = options;
         }
 
-
         public PaymentUrl GenerateAuthLink(RobokassaInvoiceRequest request)
+        {
+            var stringsFromRequest = GetStringsFromRequest(request);
+            var signatureValue = Md5HashService.GenerateMd5Hash(PrepareMd5SumString(stringsFromRequest, request.IpAddress));
+            return new PaymentUrl(BuildPaymentLink(stringsFromRequest, signatureValue, request));
+        }
+
+        public (string signature, string sum, string shopName) GetSignature(RobokassaSignatureRequest request)
+        {
+            var stringsFromRequest = GetStringsFromRequest(request);
+            return (Md5HashService.GenerateMd5Hash(PrepareMd5SumString(stringsFromRequest, request.IpAddress)), 
+                stringsFromRequest.AmountStr, _options.ShopName);
+        }
+
+        private static StringsFromRequest GetStringsFromRequest(RobokassaSignatureRequest request)
         {
             var receiptEncodedJson = request.Receipt?.ToString();
 
             var customFieldsLine = request.ShpParameters?.ToString();
 
             var amountStr = request.TotalAmount.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture);
-            
+
             var invoiceIdStr = request.InvoiceId.ToString();
-
-            var signatureValue =
-                Md5HashService
-                    .GenerateMd5Hash(
-                        PrepareMd5SumString(amountStr, invoiceIdStr, request.IpAddress, receiptEncodedJson, customFieldsLine));
-
-            return new PaymentUrl(BuildPaymentLink(invoiceIdStr, amountStr, signatureValue, receiptEncodedJson, request));
+            return new StringsFromRequest(customFieldsLine, amountStr, invoiceIdStr, receiptEncodedJson);
         }
 
         private string BuildPaymentLink(
-            string invoiceId,
-            string amount,
+            StringsFromRequest strings,
             string signature,
-            string receiptEncodedJson,
             RobokassaInvoiceRequest request)
         {
             const string host = "https://auth.robokassa.ru/Merchant/Index.aspx?";
@@ -53,16 +57,17 @@ namespace Robokassa.NET
                 parameters.Add("isTest=1");
 
             parameters.Add("MrchLogin=" + _options.ShopName);
-            parameters.Add("InvId=" + invoiceId);
-            parameters.Add("OutSum=" + amount);
+            parameters.Add("InvId=" + strings.InvoiceIdStr);
+            parameters.Add("OutSum=" + strings.AmountStr);
 
-            if (!string.IsNullOrEmpty(receiptEncodedJson))
-                parameters.Add("Receipt=" + HttpUtility.UrlEncode(receiptEncodedJson));
+            if (!string.IsNullOrEmpty(strings.ReceiptEncodedJson))
+                parameters.Add("Receipt=" + HttpUtility.UrlEncode(strings.ReceiptEncodedJson));
 
             request.ShpParameters?
                 .GetParameters?
-                .ForEach(parameter =>
-                    parameters.Add($"{parameter.Key}={HttpUtility.UrlEncode(HttpUtility.UrlEncode(parameter.Value))}"));
+                .ForEach(
+                    parameter =>
+                        parameters.Add($"{parameter.Key}={HttpUtility.UrlEncode(HttpUtility.UrlEncode(parameter.Value))}"));
 
             parameters.Add("SignatureValue=" + signature);
             if (!string.IsNullOrEmpty(request.Culture))
@@ -80,22 +85,21 @@ namespace Robokassa.NET
         }
 
         private string PrepareMd5SumString(
-            string amount,
-            string invoiceId,
-            string ipAddress,
-            string receiptEncodedJson,
-            string customParameters)
+            StringsFromRequest stringsFromRequest,
+            string ipAddress)
         {
-            var str = string.Join(":", new List<string>
-            {
-                _options.ShopName,
-                amount,
-                invoiceId,
-                ipAddress,
-                receiptEncodedJson,
-                _options.Password1,
-                customParameters,
-            }.Where(x => !string.IsNullOrEmpty(x)));
+            var str = string.Join(
+                ":",
+                new List<string>
+                {
+                    _options.ShopName,
+                    stringsFromRequest.AmountStr,
+                    stringsFromRequest.InvoiceIdStr,
+                    ipAddress,
+                    stringsFromRequest.ReceiptEncodedJson,
+                    _options.Password1,
+                    stringsFromRequest.CustomFieldsLine,
+                }.Where(x => !string.IsNullOrEmpty(x)));
 
             return str;
         }
