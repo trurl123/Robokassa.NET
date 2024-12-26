@@ -2,7 +2,7 @@ namespace Robokassa.NET.Models;
 
 public class RobokassaSignatureRequest
 {
-    public RobokassaSignatureRequest(decimal totalAmount, int invoiceId, string ipAddress, RobokassaReceiptRequest receipt = null, CustomShpParameters shpParameters = null)
+    public RobokassaSignatureRequest(decimal totalAmount, int invoiceId, string ipAddress = null, RobokassaReceiptRequest receipt = null, CustomShpParameters shpParameters = null)
     {
         TotalAmount = totalAmount;
         InvoiceId = invoiceId;
