@@ -21,13 +21,10 @@ namespace Robokassa.NET
                 {
                     sumString, invId, signatureValue
                 }));
-            string
-                outSummStr = sumString,
-                outInvIdStr = invId.ToString(),
-                srcBase = $"{outSummStr}:{outInvIdStr}:{_secondPassword}" + ":" + string.Join(":",
-                    shpParams.OrderBy(x=>x.Key)
-                        .Select(x => $"{x.Key}={x.Value}"));
-            
+            var shpParamsStr = string.Join(":", shpParams.OrderBy(x=>x.Key)
+                    .Select(x => $"{x.Key}={x.Value}"));
+            var srcBase = $"{sumString}:{invId.ToString()}:{_secondPassword}" 
+                          + (string.IsNullOrEmpty(shpParamsStr) ? "" : ":" + shpParamsStr) ;
 
             var srcMd5Hash = Md5HashService.GenerateMd5Hash(srcBase);
 
