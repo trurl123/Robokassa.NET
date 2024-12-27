@@ -10,7 +10,7 @@ namespace Robokassa.NET
             services.AddSingleton<IRobokassaService>(x =>
                 new RobokassaService(new RobokassaOptions(shopName, password1, password2), isTestEnv));
 
-            services.AddSingleton<IRobokassaPaymentValidator>(x => new RobokassaCallbackValidator(password2));
+            services.AddSingleton<IRobokassaPaymentValidator>(x => new RobokassaCallbackValidator(password1, password2));
             return services;
         }
     }
