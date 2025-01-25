@@ -9,27 +9,25 @@ namespace Robokassa.NET
 {
     public class RobokassaService : IRobokassaService
     {
-        private readonly RobokassaOptions _options;
-        private readonly bool _isTestEnv;
+        private readonly RobokassaOptions options;
 
-        public RobokassaService(RobokassaOptions options, bool isTestEnv)
+        public RobokassaService(RobokassaOptions options)
         {
-            _isTestEnv = isTestEnv;
-            _options = options;
+            this.options = options;
         }
 
         public PaymentUrl GenerateAuthLink(RobokassaInvoiceRequest request)
         {
             var stringsFromRequest = GetStringsFromRequest(request);
-            var signatureValue = Md5HashService.GenerateMd5Hash(PrepareMd5SumString(stringsFromRequest, request.IpAddress));
+            var signatureValue = Md5HashService.GenerateMd5Hash(PrepareMd5SumString(stringsFromRequest, request.IsTest));
             return new PaymentUrl(BuildPaymentLink(stringsFromRequest, signatureValue, request));
         }
 
         public (string signature, string sum, string shopName) GetSignature(RobokassaSignatureRequest request)
         {
             var stringsFromRequest = GetStringsFromRequest(request);
-            return (Md5HashService.GenerateMd5Hash(PrepareMd5SumString(stringsFromRequest, request.IpAddress)), 
-                stringsFromRequest.AmountStr, _options.ShopName);
+            return (Md5HashService.GenerateMd5Hash(PrepareMd5SumString(stringsFromRequest, request.IsTest)), 
+                stringsFromRequest.AmountStr, options.ShopName);
         }
 
         private static StringsFromRequest GetStringsFromRequest(RobokassaSignatureRequest request)
@@ -41,7 +39,7 @@ namespace Robokassa.NET
             var amountStr = request.TotalAmount.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture);
 
             var invoiceIdStr = request.InvoiceId.ToString();
-            return new StringsFromRequest(customFieldsLine, amountStr, invoiceIdStr, receiptEncodedJson);
+            return new StringsFromRequest(customFieldsLine, amountStr, invoiceIdStr, receiptEncodedJson, request.IpAddress);
         }
 
         private string BuildPaymentLink(
@@ -53,10 +51,10 @@ namespace Robokassa.NET
 
             var parameters = new Collection<string>();
 
-            if (_isTestEnv)
+            if (request.IsTest)
                 parameters.Add("isTest=1");
 
-            parameters.Add("MrchLogin=" + _options.ShopName);
+            parameters.Add("MrchLogin=" + options.ShopName);
             parameters.Add("InvId=" + strings.InvoiceIdStr);
             parameters.Add("OutSum=" + strings.AmountStr);
 
@@ -84,20 +82,18 @@ namespace Robokassa.NET
             return url;
         }
 
-        private string PrepareMd5SumString(
-            StringsFromRequest stringsFromRequest,
-            string ipAddress)
+        private string PrepareMd5SumString(StringsFromRequest stringsFromRequest, bool isTest)
         {
             var str = string.Join(
                 ":",
                 new List<string>
                 {
-                    _options.ShopName,
+                    options.ShopName,
                     stringsFromRequest.AmountStr,
                     stringsFromRequest.InvoiceIdStr,
-                    ipAddress,
+                    stringsFromRequest.IpAddress,
                     stringsFromRequest.ReceiptEncodedJson,
-                    _options.Password1,
+                    isTest ? options.TestPassword1 : options.Password1,
                     stringsFromRequest.CustomFieldsLine,
                 }.Where(x => !string.IsNullOrEmpty(x)));
 

@@ -8,14 +8,11 @@ namespace Robokassa.NET
 {
     public class RobokassaCallbackValidator : IRobokassaPaymentValidator
     {
-        private readonly string password1;
-        private readonly string password2;
+        private readonly RobokassaOptions options;
 
-
-        public RobokassaCallbackValidator(string password1, string password2)
+        public RobokassaCallbackValidator(RobokassaOptions options)
         {
-            this.password1 = password1;
-            this.password2 = password2;
+            this.options = options;
         }
 
         public void CheckResult(
@@ -23,18 +20,26 @@ namespace Robokassa.NET
             int invId,
             string signatureValue,
             bool fromBrowser,
+            bool isTest,
             params KeyValuePair<string, string>[] shpParams)
         {
             if (invId == 0)
-                throw new InvalidCallbackRequest(JsonConvert.SerializeObject(new
-                {
-                    sumString, invId, signatureValue
-                }));
-            var shpParamsStr = string.Join(":", shpParams.OrderBy(x=>x.Key)
+                throw new InvalidCallbackRequest(
+                    JsonConvert.SerializeObject(
+                        new
+                        {
+                            sumString, invId, signatureValue
+                        }));
+            var shpParamsStr = string.Join(
+                ":",
+                shpParams.OrderBy(x => x.Key)
                     .Select(x => $"{x.Key}={x.Value}"));
-            var passwword = fromBrowser ? password1 : password2;
-            var srcBase = $"{sumString}:{invId.ToString()}:{passwword}" 
-                          + (string.IsNullOrEmpty(shpParamsStr) ? "" : ":" + shpParamsStr) ;
+            var password =
+                isTest
+                    ? fromBrowser ? options.TestPassword1 : options.TestPassword2
+                    : fromBrowser ? options.Password1 : options.Password2;
+            var srcBase = $"{sumString}:{invId.ToString()}:{password}"
+                          + (string.IsNullOrEmpty(shpParamsStr) ? "" : ":" + shpParamsStr);
 
             var srcMd5Hash = Md5HashService.GenerateMd5Hash(srcBase);
 

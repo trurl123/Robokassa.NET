@@ -5,12 +5,12 @@ namespace Robokassa.NET
     public static class RobokassaServicesExtension
     {
         public static IServiceCollection AddRobokassa(this IServiceCollection services, string shopName,
-            string password1, string password2, bool isTestEnv)
+            string password1, string password2, string testpassword1, string testpassword2)
         {
-            services.AddSingleton<IRobokassaService>(x =>
-                new RobokassaService(new RobokassaOptions(shopName, password1, password2), isTestEnv));
+            var robokassaOptions = new RobokassaOptions(shopName, password1, password2, testpassword1, testpassword2);
+            services.AddSingleton<IRobokassaService>(x => new RobokassaService(robokassaOptions));
 
-            services.AddSingleton<IRobokassaPaymentValidator>(x => new RobokassaCallbackValidator(password1, password2));
+            services.AddSingleton<IRobokassaPaymentValidator>(x => new RobokassaCallbackValidator(robokassaOptions));
             return services;
         }
     }
