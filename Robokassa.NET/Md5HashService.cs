@@ -7,7 +7,7 @@ namespace Robokassa.NET
     {
         public static string GenerateMd5Hash(string stringToHash)
         {
-            var md5 = new MD5CryptoServiceProvider();
+            var md5 = MD5.Create();
             var bSignature = md5.ComputeHash(Encoding.ASCII.GetBytes(stringToHash));
 
             var sbSignature = new StringBuilder();

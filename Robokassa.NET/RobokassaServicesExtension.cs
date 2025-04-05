@@ -8,9 +8,9 @@ namespace Robokassa.NET
             string password1, string password2, string testpassword1, string testpassword2)
         {
             var robokassaOptions = new RobokassaOptions(shopName, password1, password2, testpassword1, testpassword2);
-            services.AddSingleton<IRobokassaService>(x => new RobokassaService(robokassaOptions));
+            services.AddSingleton<IRobokassaService>(_ => new RobokassaService(robokassaOptions));
 
-            services.AddSingleton<IRobokassaPaymentValidator>(x => new RobokassaCallbackValidator(robokassaOptions));
+            services.AddSingleton<IRobokassaPaymentValidator>(_ => new RobokassaCallbackValidator(robokassaOptions));
             return services;
         }
     }

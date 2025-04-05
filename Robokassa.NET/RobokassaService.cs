@@ -2,7 +2,6 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
 using System.Web;
-using Newtonsoft.Json;
 using Robokassa.NET.Models;
 
 namespace Robokassa.NET
